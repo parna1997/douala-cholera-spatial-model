@@ -1,0 +1,22 @@
+# Generated outputs and sensitive/local runtime files
+outputs/
+logs/
+cache/
+source_backups/
+inputs/douala/data/
+configs/cities.csv
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.pytest_cache/
+.env
+.env.*
+*.pem
+*.key
+*.pkl
+*.pkl.gz
+*.parquet
+*.tgz
+*.zip
+.DS_Store
+Thumbs.db
