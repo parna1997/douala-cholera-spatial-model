@@ -13,7 +13,7 @@ def main():
     p=argparse.ArgumentParser(); p.add_argument('--project-root',default=None); p.add_argument('--city_slug',default='douala'); args=p.parse_args()
     root=Path(args.project_root).resolve() if args.project_root else Path(__file__).resolve().parents[1]
     failures=[]; info={"python":sys.version,"project_root":str(root)}
-    for path in [root/'configs'/'cities.csv',root/'inputs'/args.city_slug/'data'/'pop.tif',root/'inputs'/args.city_slug/'data'/'pop.csv',root/'code'/'douala_model.py',root/'code'/'ensemble_runner.py',root/'code'/'postprocess.py',root/'code'/'validate_overture_baseline.py']:
+    for path in [root/'configs'/'cities.csv',root/'inputs'/args.city_slug/'data'/'pop.tif',root/'inputs'/args.city_slug/'data'/'pop.csv',root/'code'/'douala_model.py',root/'code'/'ensemble_runner.py',root/'code'/'postprocess.py',root/'code'/'render_publication_figures.py',root/'code'/'render_figure6_maps.py',root/'code'/'validate_overture_baseline.py']:
         if not path.exists(): failures.append(f'missing required file: {path}')
     cities=root/'configs'/'cities.csv'
     if cities.exists():
@@ -28,7 +28,7 @@ def main():
             mod=importlib.import_module(name); versions[name]=getattr(mod,'__version__','available')
         except Exception as exc: failures.append(f'import failed: {name}: {exc}')
     info['packages']=versions
-    for f in ['douala_model.py','ensemble_runner.py','check_outputs.py','postprocess.py','check_figures.py','validate_overture_baseline.py']:
+    for f in ['douala_model.py','ensemble_runner.py','check_outputs.py','postprocess.py','check_figures.py','render_publication_figures.py','render_figure6_maps.py','prepare_population.py','validate_overture_baseline.py']:
         path=root/'code'/f
         if path.exists():
             try: py_compile.compile(str(path),doraise=True)

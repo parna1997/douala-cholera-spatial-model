@@ -15,6 +15,8 @@ import json
 import math
 import pickle
 import sys
+import shutil
+import subprocess
 from pathlib import Path
 
 import matplotlib
@@ -77,11 +79,11 @@ def parse_args():
 
 def _style():
     plt.rcParams.update({
-        "font.size": 13,
+        "font.size": 14,
         "axes.labelsize": 14,
         "axes.titlesize": 14,
-        "xtick.labelsize": 12,
-        "ytick.labelsize": 12,
+        "xtick.labelsize": 13,
+        "ytick.labelsize": 13,
         "legend.fontsize": 11,
         "figure.titlesize": 15,
         "savefig.dpi": DPI,
@@ -372,6 +374,7 @@ def plot_layout_map(layout, scenario, path):
     ax.set_aspect("equal",adjustable="box"); ax.axis("off"); fig.tight_layout(); _save(fig,path,vector=False)
 
 
+
 def make_main_figures(run_dir, main_dir, supp_dir, tables, ckdir):
     # Figure 1 maps and legend
     map_files={"baseline":"fig1A.png","intervD_destinations_only":"fig1B.png","intervD_facilities_only":"fig1C.png","intervD_area_redistribute":"fig1D.png"}
@@ -451,28 +454,22 @@ def make_main_figures(run_dir, main_dir, supp_dir, tables, ckdir):
         ax.errorbar(x+off,g["mean"],yerr=g["std"],fmt="o",capsize=4,markersize=7,label=lab)
     ax.set_xticks(x); ax.set_xticklabels([LABELS[s] for s in SCENARIOS]); ax.set_ylabel("Percentage of simulated population"); ax.grid(axis="y",alpha=.2); ax.legend(frameon=False); fig.tight_layout(); _save(fig,main_dir/"fig6B.png")
 
-    # Figure 6 C-F mean E+I density at each scenario-specific peak.
-    peak_means={}; vmax=0.0
-    for sc in SCENARIOS:
-        arrs=[]
-        for seed in sorted(tables["outcomes"].seed.unique()):
-            cp=ckdir/f"v{CHECKPOINT_VERSION}_seed_{int(seed):03d}_{sc}.pkl.gz"
-            with gzip.open(cp,"rb") as f: payload=pickle.load(f)
-            arr=np.asarray(payload["spatial"]["peak_ei"],dtype=float); arrs.append(arr)
-        mean=np.mean(np.stack(arrs),axis=0); peak_means[sc]=mean; vmax=max(vmax,float(np.nanmax(mean)))
-    map_names={"baseline":"fig6C.png","intervD_destinations_only":"fig6D.png","intervD_facilities_only":"fig6E.png","intervD_area_redistribute":"fig6F.png"}
-    for sc in SCENARIOS:
-        layout=layouts[sc]; ext=_active_layout_layer(layout,"outer"); ext=ext if ext is not None and not getattr(ext,"empty",True) else _active_layout_layer(layout,"hubs")
-        extent=list(ext.total_bounds) if ext is not None and not getattr(ext,"empty",True) else None
-        if extent is not None: extent=[extent[0],extent[2],extent[1],extent[3]]
-        fig,ax=plt.subplots(figsize=(9.2,9.2)); ax.imshow(peak_means[sc],origin="lower",extent=extent,cmap="turbo",vmin=0,vmax=max(vmax,1e-12))
-        for ft,mk,size in [("school","^",32),("market","s",30),("tap","o",34),("toilet","x",38)]:
-            g=_active_layout_layer(layout,ft)
-            if g is not None and not getattr(g,"empty",True): ax.scatter(g.geometry.x,g.geometry.y,marker=mk,s=size,alpha=.75,linewidths=.6)
-        if ext is not None and not getattr(ext,"empty",True): ext.boundary.plot(ax=ax,linewidth=.6,alpha=.5)
-        ax.set_aspect("equal",adjustable="box"); ax.axis("off"); fig.tight_layout(); _save(fig,main_dir/map_names[sc],vector=False)
-    fig,ax=plt.subplots(figsize=(9.5,1.2)); ax.axis("off"); handles=[Line2D([0],[0],marker="^",linestyle="None",label="Schools",markersize=9),Line2D([0],[0],marker="s",linestyle="None",label="Markets",markersize=9),Line2D([0],[0],marker="o",linestyle="None",label="Water taps",markersize=9),Line2D([0],[0],marker="x",linestyle="None",label="Public toilets",markersize=9)]; ax.legend(handles=handles,loc="center",ncol=4,frameon=False); _save(fig,main_dir/"fig6_legend.png")
-    fig,ax=plt.subplots(figsize=(7.5,1.3)); ax.set_visible(False); sm=plt.cm.ScalarMappable(norm=plt.Normalize(0,max(vmax,1e-12)),cmap="turbo"); sm.set_array([]); cbar=fig.colorbar(sm,ax=ax,orientation="horizontal",fraction=.85,pad=.15); cbar.set_label("Mean E+I density at scenario-specific peak"); _save(fig,main_dir/"fig6_colorbar.png")
+    # Figure 6(c-f) is exported from the same archived arrays and scenario
+    # layouts as the other panels. This dedicated renderer uses two independent,
+    # transparent density layers and small symbols to improve readability.
+    # It runs only plotting operations; epidemic states are not recalculated.
+    import subprocess
+    seed_ids = sorted({int(v) for v in tables["outcomes"].seed.dropna().unique()})
+    if not seed_ids or seed_ids != list(range(seed_ids[0], seed_ids[0] + len(seed_ids))):
+        raise ValueError("Outcome seeds must form one continuous range for spatial-map export")
+    subprocess.run([
+        sys.executable,
+        str(Path(__file__).resolve().with_name("render_figure6_maps.py")),
+        "--run-dir", str(run_dir),
+        "--out-dir", str(main_dir),
+        "--seed-start", str(seed_ids[0]),
+        "--n-seeds", str(len(seed_ids)),
+    ], check=True)
 
 
 def make_contamination_figures(by_seed, freq, supp_dir):
@@ -487,9 +484,12 @@ def make_contamination_figures(by_seed, freq, supp_dir):
         fig,ax=plt.subplots(figsize=(9.2,8.2)); pts=ax.scatter(z.tap_x,z.tap_y,c=z.dynamic_frequency_pct,s=65,cmap="viridis",vmin=0,vmax=100,edgecolors="none"); cbar=fig.colorbar(pts,ax=ax); cbar.set_label("Replicates dynamically contaminated (%)"); ax.set_xlabel("Projected x (m)"); ax.set_ylabel("Projected y (m)"); ax.set_aspect("equal",adjustable="box"); fig.tight_layout(); _save(fig,supp_dir/f"supp_dynamic_contamination_frequency_{LABELS[sc].lower().replace('+','_plus_')}.png")
 
 
-def write_figure_manifest(main_dir, supp_dir):
+def write_figure_manifest(main_dir, supp_dir, publication_dir=None):
     rows=[]
-    for section,folder in [("main",main_dir),("supplement",supp_dir)]:
+    folders=[("main",main_dir),("supplement",supp_dir)]
+    if publication_dir is not None:
+        folders.append(("publication",publication_dir))
+    for section,folder in folders:
         for p in sorted(folder.glob("*.png")):
             rows.append({"section":section,"filename":p.name,"bytes":p.stat().st_size,"pdf_exists":p.with_suffix('.pdf').exists()})
     pd.DataFrame(rows).to_csv(main_dir.parent/"figure_manifest.csv",index=False)
@@ -515,7 +515,40 @@ def main():
     by_seed,headline,freq=contamination_statistics(tables["tap_contamination"],stats_dir)
     make_main_figures(run_dir,main_dir,supp_dir,tables,ckdir)
     make_contamination_figures(by_seed,freq,supp_dir)
-    write_figure_manifest(main_dir,supp_dir)
+
+    # Final publication styling is applied to the outputs of THIS ensemble,
+    # not to a fixed archived run. No simulation is executed here.
+    # Figure 4(a-c) and Figure 6(a-b) use per-seed aggregate CSVs.
+    publication_dir=run_dir/"figures"/"publication"
+    publication_dir.mkdir(parents=True,exist_ok=True)
+    subprocess.run([
+        sys.executable,
+        str(Path(__file__).resolve().with_name("render_publication_figures.py")),
+        "--csv-dir",str(run_dir),
+        "--out",str(publication_dir),
+        "--expected-seeds",str(args.n_seeds),
+    ],check=True)
+
+    # The regular analysis stage has already drawn Figure 6(c-f) using
+    # render_figure6_maps.py and this same run's 50 spatial checkpoints.
+    # Collect these light-background maps and their common legend/colourbar
+    # beside the other final journal panels, using the manuscript names.
+    for original,publication in [
+        ("fig6C","Figure6c"),("fig6D","Figure6d"),
+        ("fig6E","Figure6e"),("fig6F","Figure6f"),
+        ("fig6_legend","Figure6_legend"),
+        ("fig6_colorbar","Figure6_colorbar"),
+    ]:
+        for ext in (".png",".pdf"):
+            source=main_dir/(original+ext)
+            if not source.is_file():
+                raise FileNotFoundError(f"Publication map asset is missing: {source}")
+            shutil.copy2(source,publication_dir/(publication+ext))
+    map_provenance=main_dir/"figure6_provenance.json"
+    if map_provenance.is_file():
+        shutil.copy2(map_provenance,publication_dir/map_provenance.name)
+
+    write_figure_manifest(main_dir,supp_dir,publication_dir)
 
     metadata={
         "city_slug":args.city_slug,"run_id":args.run_id,"seed_start":args.seed_start,"n_seeds":args.n_seeds,
@@ -528,6 +561,7 @@ def main():
     print(f"[postprocess] statistics → {stats_dir}")
     print(f"[postprocess] main figures → {main_dir}")
     print(f"[postprocess] supplementary figures → {supp_dir}")
+    print(f"[postprocess] journal-ready Figure 4 and Figure 6 panels → {publication_dir}")
     print("[postprocess] SUCCESS")
 
 
