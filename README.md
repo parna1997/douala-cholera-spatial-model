@@ -297,7 +297,7 @@ parameter values, scenario definitions and limitations.
 
 This repository contains the code associated with the following accepted manuscript:
 
-Mandal, P., & Manley, E. (in press). *Agent-based modelling of spatial co-occurrence and cholera exposure under urban decentralisation*.
+Mandal, P., & Manley, E. *Agent-based modelling of spatial co-occurrence and cholera exposure under urban decentralisation*.
 
 ## Citation
 
@@ -305,14 +305,12 @@ If you use or adapt this code or its modelling approach in your research, please
 
 The full bibliographic details and DOI will be added once the article is published.
 
-The publication citation does not itself grant permission to reuse or adapt the code; please see the permissions statement below.
-
 ## Code availability and permissions
 
 The code is publicly accessible to support research transparency, inspection
 of the model implementation, and understanding of how the analyses and
-figures were produced. **No explicit software licence is provided with this
-repository.** Public visibility is not an open-source licence and does not
+figures were produced. No explicit software licence is provided with this
+repository. Public visibility is not an open-source licence and does not
 itself grant general permission to copy, modify or redistribute the code.
 GitHub's terms permit viewing and forking public repositories on GitHub.
 For any additional reuse or adaptation, please seek permission from the
