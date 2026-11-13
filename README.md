@@ -293,15 +293,33 @@ The compressed results archive intentionally excludes these large files.
 The manuscript and supplementary material document the model assumptions,
 parameter values, scenario definitions and limitations.
 
-## Citation and reuse
+## Associated publication
 
-If you use this repository, cite the associated article and identify the
-GitHub repository URL and the **specific commit** used. GitHub's commit link
-provides a stable way to identify the exact source revision even if the main
-branch changes. The repository does not include the external raw data or
-original OpenStreetMap snapshot; code availability alone does not guarantee
-bit-for-bit numerical reproduction of the published run.
+This repository contains the code associated with the following accepted manuscript:
 
-If a software licence is provided separately in the repository, follow its
-conditions; access to public code alone is not a licence to redistribute
-or adapt it.
+Mandal, P., & Manley, E. (in press). *Agent-based modelling of spatial co-occurrence and cholera exposure under urban decentralisation*.
+
+## Citation
+
+If you use or adapt this code or its modelling approach in your research, please cite the associated publication.
+
+The full bibliographic details and DOI will be added once the article is published.
+
+The publication citation does not itself grant permission to reuse or adapt the code; please see the permissions statement below.
+
+## Code availability and permissions
+
+The code is publicly accessible to support research transparency, inspection
+of the model implementation, and understanding of how the analyses and
+figures were produced. **No explicit software licence is provided with this
+repository.** Public visibility is not an open-source licence and does not
+itself grant general permission to copy, modify or redistribute the code.
+GitHub's terms permit viewing and forking public repositories on GitHub.
+For any additional reuse or adaptation, please seek permission from the
+relevant copyright holder(s).
+
+The externally sourced population raster, original OpenStreetMap network
+snapshot, large simulation checkpoints and published-run outputs are not
+included. Consequently, the supplied code and new runs can reproduce the
+model workflow and figure presentation but do not guarantee identical
+numerical results to the accepted article.
