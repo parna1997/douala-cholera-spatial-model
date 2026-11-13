@@ -32,17 +32,38 @@ a Python 3.11 Conda environment called `airenotebook`, and project directory
 records the packages used for the study; environment creation may need
 adjustment on another system.
 
-1. Download the WorldPop 2020 Cameroon unconstrained 30 arc-second raster
+1. Clone the repository into your Aire project directory. The commands below
+   assume the project is named `cholera_project` on Leeds Aire:
+
+   ```bash
+   mkdir -p /mnt/scratch/$USER/cholera_project
+   cd /mnt/scratch/$USER/cholera_project
+   git clone https://github.com/parna1997/douala-cholera-spatial-model.git
+   module load miniforge/24.7.1
+   ```
+
+   **Conda:** If the `airenotebook` environment does not already exist, create
+   it from `douala-cholera-spatial-model/environment/environment.yml` before
+   running `conda activate`:
+
+   ```bash
+   conda env create -f douala-cholera-spatial-model/environment/environment.yml
+   conda activate airenotebook
+   ```
+
+   On systems where this machine-specific environment export cannot be solved
+   directly, create a Python 3.11 environment and install the packages listed
+   in the environment file; the exact software versions are documented in
+   Supplementary Table S4. A full new-system/clean-environment installation
+   has not been independently verified.
+
+2. Download the WorldPop 2020 Cameroon unconstrained 30 arc-second raster
    described in [`inputs/README.md`](inputs/README.md).
-2. Put the downloaded `douala-cholera-spatial-model` folder **inside**
-   `/mnt/scratch/$USER/cholera_project`, activate the `airenotebook` Conda
-   environment, supply the population raster and generate the point/weight CSV:
+3. Supply the population raster and generate its point/weight CSV:
 
    ```bash
    PROJECT_ROOT=/mnt/scratch/$USER/cholera_project
    cd "$PROJECT_ROOT"
-   module load miniforge/24.7.1
-   conda activate airenotebook
    mkdir -p "$PROJECT_ROOT/inputs/douala/data" "$PROJECT_ROOT/configs"
    cp douala-cholera-spatial-model/configs/cities.example.csv "$PROJECT_ROOT/configs/cities.csv"
    cp /path/to/downloaded/WorldPop_Cameroon_2020.tif "$PROJECT_ROOT/inputs/douala/data/pop.tif"
@@ -53,7 +74,7 @@ adjustment on another system.
 
    The `cp` source above is an **example filename**; use the actual downloaded
    GeoTIFF filename. See the input guidance for details.
-3. Install the source files and launch the pipeline:
+4. Install the source files and launch the pipeline:
 
    ```bash
    bash douala-cholera-spatial-model/install_to_aire.sh
@@ -64,7 +85,12 @@ adjustment on another system.
 The stages check the environment and input files, prepare the spatial layout,
 execute **50 independent seeds (42–91) for each of four scenarios** (200 runs),
 aggregate the checkpoints, compute statistics and generate figures, perform
-an independent Overture validation, and package the results. Job monitoring:
+an independent Overture validation, and package the results. A fresh run may
+need internet access for OpenStreetMap downloads during spatial precomputation.
+The separate Overture job also needs access to the public Overture data services;
+if that service is unavailable, the independent validation/packaging stage may
+fail even though the simulations and journal-style figures have completed.
+Job monitoring:
 
 ```bash
 squeue -u "$USER"
@@ -101,7 +127,13 @@ mean±SD annotations. Figure 6(c–f) maps display a shared nonlinear blue E+I
 scale and a separate amber generic-POI density overlay; the same plotting
 parameters are applied across scenarios. The underlying values are taken from
 the outputs of the *new* simulation, not manually entered or supplied from a
-past run. The postprocessing stage also creates other main and supplementary
+past run. **For the final Figure 4 and Figure 6 as styled in the article, always use
+`figures/publication/`.** The internal `figures/main/` folder contains
+additional analytic/legacy figure series with different numbering and, in some
+cases, older styling. Do not substitute these internal numbered plots for the
+`Figure4*` and `Figure6*` files in `figures/publication/`.
+
+The postprocessing stage also creates other main and supplementary
 analysis figures in `figures/main/` and `figures/supplement/`.
 
 ### Re-render without rerunning simulations
@@ -149,3 +181,16 @@ The compressed results archive intentionally excludes these large files.
 
 The manuscript and supplementary material document the model assumptions,
 parameter values, scenario definitions and limitations.
+
+## Citation and reuse
+
+If you use this repository, cite the associated article and identify the
+GitHub repository URL and the **specific commit** used. GitHub's commit link
+provides a stable way to identify the exact source revision even if the main
+branch changes. The repository does not include the external raw data or
+original OpenStreetMap snapshot; code availability alone does not guarantee
+bit-for-bit numerical reproduction of the published run.
+
+If a software licence is provided separately in the repository, follow its
+conditions; access to public code alone is not a licence to redistribute
+or adapt it.
