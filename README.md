@@ -102,6 +102,117 @@ Use an **empty** `outputs/douala/run_3000/` directory for a new run. The number
 historically stored simulation. Existing outputs are not overwritten by the
 installation script, and you should not mix checkpoints from different runs.
 
+## Running outside Leeds Aire
+
+**Access to Leeds Aire is not required to use the model.** The repository contains
+Python model, analysis and figure-generation code; the supplied job scripts are
+an **Aire-specific Slurm reference workflow**. They are **not** a turnkey
+cross-platform installer. In particular, the job scripts specify Aire's
+`nodes` partition and Miniforge module, and default to Aire's scratch path.
+The exact environment and external input snapshots used for the article are not
+included. A complete fresh run on an alternative cluster or workstation has
+not been independently tested.
+
+### Other Linux HPC clusters using Slurm
+
+1. Clone the repository and create a **writable project/work directory**. You
+   need the external inputs described in `inputs/README.md` and a compatible
+   Python 3.11 environment. The captured `environment/environment.yml` is a
+   Linux environment record, not a guaranteed portable lockfile. Use the
+   versions in Supplementary Table S4 as a reference if dependencies need
+   adapting.
+2. Prepare `configs/cities.csv` and `inputs/douala/data/pop.tif` and
+   `pop.csv` following the Aire example above, but replace the scratch path
+   with your own. Set `PROJECT_ROOT` to that directory before installation:
+
+   ```bash
+   export PROJECT_ROOT="$HOME/cholera_project"  # replace with suitable scratch/work path
+   mkdir -p "$PROJECT_ROOT/inputs/douala/data" "$PROJECT_ROOT/configs"
+   # Prepare population files and cities.csv as documented above.
+   bash douala-cholera-spatial-model/install_to_aire.sh
+   ```
+
+   Despite its historical name, `install_to_aire.sh` only copies the code and
+   Slurm scripts to `$PROJECT_ROOT` after checking the required inputs.
+3. **Before submitting jobs**, edit the installed `slurm/*.sh` scripts:
+   change `#SBATCH --partition=nodes` to the partition available on your
+   cluster (or remove it if your cluster has a suitable default); adjust
+   requested memory, CPUs, wall times and array concurrency to its limits;
+   and replace `module load miniforge/24.7.1` / `conda activate airenotebook`
+   with your site's supported environment activation. For example, if Conda
+   is installed in a known location, a batch job can use
+   `source /your/conda/path/etc/profile.d/conda.sh` followed by
+   `conda activate YOUR_ENV`.
+4. Export `PROJECT_ROOT` in the submitting shell, then run
+   `bash "$PROJECT_ROOT/submit_douala_pipeline.sh"`. The normal stages create
+   the required checkpoints and render the final Figures 4 and 6 **from that
+   new run**. Check the job logs; a new-system environment may need additional
+   site-specific changes before completing.
+
+### Linux workstation or cloud VM without Slurm
+
+The same Python stages can in principle be invoked **sequentially**, without
+`sbatch`. This is a resource-intensive research model (the reference Slurm
+jobs request up to 64 GB memory and use 200 stochastic scenario runs), so an
+ordinary laptop may not have sufficient resources. The instructions below
+mirror the Slurm pipeline but are **not a tested one-command local release**.
+Work in the prepared project directory, with `code/`, `configs/` and
+`inputs/douala/data/` already installed or copied there, and activate a
+compatible Python environment first.
+
+```bash
+export PROJECT_ROOT="$PWD"
+export PYTHONUNBUFFERED=1
+export RUN_SOBOL=0 RUN_PARAMETER_SCREENING=0 RUN_MOBILITY_COMPARATOR_MAIN=0
+export RUN_COOCCURRENCE_ENSEMBLE=1 COOCCURRENCE_RESUME=1
+export RUN_PAPER_PLOTS=0 RUN_DIAGNOSTIC_PLOTS=0 KEEP_LEGACY_PLOTS=1
+
+# 1. Prepare/cache the urban environment.
+python code/ensemble_runner.py --model-source code/douala_model.py \
+  --city_slug douala --run_id 3000 --mode precompute
+
+# 2. Generate 50 seeds (42 to 91) across all four scenarios.
+#    Run sequentially here; a workstation can parallelise cautiously if resourced.
+for seed in $(seq 42 91); do
+  export COOCCURRENCE_N_SEEDS=1 COOCCURRENCE_SEED_START="$seed"
+  python code/ensemble_runner.py --model-source code/douala_model.py \
+    --city_slug douala --run_id 3000 --mode worker || exit 1
+done
+
+# 3. Verify/aggregate the completed run.
+export COOCCURRENCE_N_SEEDS=50 COOCCURRENCE_SEED_START=42
+python code/check_outputs.py --project-root "$PROJECT_ROOT" \
+  --city_slug douala --run_id 3000 --seed-start 42 --n-seeds 50 \
+  --checkpoint-version 7 --write-report || exit 1
+python code/ensemble_runner.py --model-source code/douala_model.py \
+  --city_slug douala --run_id 3000 --mode aggregate --model-plots || exit 1
+python code/check_outputs.py --project-root "$PROJECT_ROOT" \
+  --city_slug douala --run_id 3000 --seed-start 42 --n-seeds 50 \
+  --checkpoint-version 7 --require-aggregate-csvs --write-report || exit 1
+
+# 4. Statistics and final manuscript-style figures.
+python code/postprocess.py --project-root "$PROJECT_ROOT" \
+  --city_slug douala --run_id 3000 --seed-start 42 --n-seeds 50 \
+  --bootstrap-resamples 10000 --permutations 10000 || exit 1
+python code/check_figures.py --project-root "$PROJECT_ROOT" \
+  --city_slug douala --run_id 3000 --min-width-px 3000
+```
+
+The optional, independently downloaded **Overture validation** is separate and
+can be run when network access and the relevant Overture release are available:
+
+```bash
+python code/validate_overture_baseline.py \
+  --project-root "$PROJECT_ROOT" --city_slug douala --run_id 3000 \
+  --release latest
+```
+
+The local sequence does not automatically produce the Aire-specific
+`environment/` provenance report or final `.tgz` archive; those are recorded
+by the Slurm stages. The **publication figures** themselves are created by
+`postprocess.py` and written to the same `figures/publication/` directory
+listed below. Do not mix outputs/checkpoints from different runs.
+
 ## Final journal-style figures
 
 The normal `slurm/04_postprocess_douala.sh` stage automatically produces the
