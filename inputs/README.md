@@ -1,8 +1,27 @@
-# Input data
+# Spatial inputs
 
-The population data are not included. Supply the 2020 unconstrained Cameroon WorldPop population grid and the corresponding prepared CSV at:
+The population data are not distributed with this code. Download the Cameroon
+**2020 unconstrained WorldPop population raster (30 arc-second resolution)**,
+corresponding to the source specified in Supplementary Table S2:
+https://hub.worldpop.org/geodata/summary?id=30553
 
-- `inputs/douala/data/pop.tif`
-- `inputs/douala/data/pop.csv`
+Place the extracted GeoTIFF at:
 
-The CSV should contain WGS84 longitude, latitude and population values (`x,y,z` or recognised alternatives). See the manuscript Supplementary Table S2 for dataset provenance. The prepared population inputs and network snapshots are not distributed. Network data retrieved at a different date may yield different layouts. The Overture validator retrieves current public data separately and is not an ABM input.
+    inputs/douala/data/pop.tif
+
+Convert it to the point/weight CSV used by the model:
+
+    python code/prepare_population.py \
+      --raster inputs/douala/data/pop.tif \
+      --csv inputs/douala/data/pop.csv
+
+The CSV has WGS84 longitude (`x`), latitude (`y`), and population value (`z`)
+for each positive-value raster cell. The conversion is deterministic. Do not
+substitute a different population product if you expect the same spatial
+geometry as the study.
+
+The street network is obtained from OpenStreetMap as part of the spatial
+precomputation. A newly retrieved network can differ from the historical
+network extract used for the article. The Overture Maps validator downloads
+**independent validation features**; Overture data never enter the epidemic
+simulation or the figure inputs.
